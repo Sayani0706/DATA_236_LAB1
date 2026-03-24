@@ -3,4 +3,4 @@ __pycache__/
 .env
 venv/
 .env.example
-uploads/
+uploads/.DS_Store
