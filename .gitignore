@@ -1,7 +1,8 @@
 __pycache__/
 *.pyc
 .env
-venv/
 .env.example
+venv/
 uploads/
 .DS_Store
+yelp_frontend/
