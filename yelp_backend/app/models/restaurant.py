@@ -20,6 +20,7 @@ class Restaurant(Base):
     pricing_tier = Column(String(10))
     amenities = Column(String(255))
     is_claimed = Column(Boolean, default=False)
+    view_count = Column(Integer, default=0)
     created_at = Column(TIMESTAMP, default=datetime.datetime.utcnow)
 
     owner = relationship("User", back_populates="restaurants")

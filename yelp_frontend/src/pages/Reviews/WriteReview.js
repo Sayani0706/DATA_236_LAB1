@@ -6,12 +6,16 @@ const WriteReview = ({ restaurantId, onReviewAdded }) => {
   const [comment, setComment] = useState('');
   const [photo, setPhoto] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setUploading(true);
+    setSuccessMsg('');
+    setErrorMsg('');
+
     try {
-      // Step 1 — submit the review
       const reviewRes = await api.post('/reviews/', {
         restaurant_id: restaurantId,
         rating: parseInt(rating),
@@ -20,7 +24,6 @@ const WriteReview = ({ restaurantId, onReviewAdded }) => {
 
       const reviewId = reviewRes.data.id;
 
-      // Step 2 — upload photo if selected
       if (photo) {
         const formData = new FormData();
         formData.append('file', photo);
@@ -29,13 +32,15 @@ const WriteReview = ({ restaurantId, onReviewAdded }) => {
         });
       }
 
-      alert("Review posted!");
+      setSuccessMsg('Review posted!');
+      setTimeout(() => setSuccessMsg(''), 3000);
       setComment('');
       setRating(5);
       setPhoto(null);
       if (onReviewAdded) onReviewAdded();
     } catch (err) {
-      alert("Error posting review. Check your login status.");
+      setErrorMsg('Error posting review. Check your login status.');
+      setTimeout(() => setErrorMsg(''), 3000);
     } finally {
       setUploading(false);
     }
@@ -44,6 +49,10 @@ const WriteReview = ({ restaurantId, onReviewAdded }) => {
   return (
     <div className="card p-3 mt-3 shadow-sm">
       <h5>Add a Review</h5>
+
+      {successMsg && <div className="alert alert-success py-1 small mt-2">{successMsg}</div>}
+      {errorMsg   && <div className="alert alert-danger  py-1 small mt-2">{errorMsg}</div>}
+
       <form onSubmit={handleSubmit}>
         <div className="mb-2">
           <label className="form-label small fw-bold">Rating</label>
@@ -97,7 +106,7 @@ const WriteReview = ({ restaurantId, onReviewAdded }) => {
               <span className="spinner-border spinner-border-sm me-2" />
               Submitting...
             </>
-          ) : "Submit Review"}
+          ) : 'Submit Review'}
         </button>
       </form>
     </div>

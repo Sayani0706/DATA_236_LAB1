@@ -27,6 +27,9 @@ def create_review(data: ReviewCreate, db: Session = Depends(get_db), current_use
     r = db.query(Restaurant).filter(Restaurant.id == data.restaurant_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Restaurant not found")
+    existing = db.query(Review).filter(Review.user_id == current_user.id, Review.restaurant_id == data.restaurant_id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="You have already reviewed this restaurant. Edit your existing review instead.")
     review = Review(user_id=current_user.id, restaurant_id=data.restaurant_id, rating=data.rating, comment=data.comment)
     db.add(review)
     db.commit()

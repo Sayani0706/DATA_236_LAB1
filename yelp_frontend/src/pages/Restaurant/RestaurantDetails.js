@@ -1,19 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useParams } from 'react-router-dom';
 import api from '../../services/api.js';
 import WriteReview from '../Reviews/WriteReview.js';
+import { AuthContext } from '../../context/AuthContext.js';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const RestaurantDetails = () => {
-  const { id } = useParams();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { id }                    = useParams();
+  const { token }                 = useContext(AuthContext);
+  const [data, setData]           = useState(null);
+  const [loading, setLoading]     = useState(true);
+  const [favMsg, setFavMsg]       = useState('');
 
   const fetchDetails = async () => {
     try {
       const res = await api.get(`/restaurants/${id}`);
       setData(res.data);
     } catch (err) {
-      console.error("Error fetching restaurant:", err);
+      console.error('Error fetching restaurant:', err);
     } finally {
       setLoading(false);
     }
@@ -24,9 +29,11 @@ const RestaurantDetails = () => {
   const handleFavorite = async () => {
     try {
       await api.post(`/favorites/${id}`);
-      alert("Added to favourites!");
+      setFavMsg('Added to favourites!');
+      setTimeout(() => setFavMsg(''), 3000);
     } catch (err) {
-      alert("Could not add to favourites. Already added or not logged in.");
+      setFavMsg('Could not add to favourites. Already saved or not logged in.');
+      setTimeout(() => setFavMsg(''), 3000);
     }
   };
 
@@ -37,9 +44,7 @@ const RestaurantDetails = () => {
   );
 
   if (!data) return (
-    <div className="container mt-5">
-      <p>Restaurant not found.</p>
-    </div>
+    <div className="container mt-5"><p>Restaurant not found.</p></div>
   );
 
   const { restaurant, avg_rating, review_count, reviews } = data;
@@ -51,21 +56,20 @@ const RestaurantDetails = () => {
       {restaurant.photos && restaurant.photos.length > 0 && (
         <div className="mb-4 d-flex flex-wrap gap-3">
           {restaurant.photos.map((photo, idx) => (
-            <img
-              key={idx}
-              src={`http://localhost:8000${photo.photo_url}`}
+            <img key={idx}
+              src={`${API_URL}${photo.photo_url}`}
               alt={`${restaurant.name} photo`}
-              style={{
-                width: '220px',
-                height: '160px',
-                objectFit: 'contain',
-                borderRadius: '8px',
-                border: '1px solid #dee2e6',
-                backgroundColor: '#fff',
-                padding: '6px'
-              }}
+              style={{ width: '100%', height: '300px', objectFit: 'cover',
+                borderRadius: '10px', border: '1px solid #dee2e6', marginBottom: '10px' }}
             />
           ))}
+        </div>
+      )}
+
+      {/* Favourite feedback */}
+      {favMsg && (
+        <div className={`alert py-2 ${favMsg.includes('Could not') ? 'alert-warning' : 'alert-success'}`}>
+          {favMsg}
         </div>
       )}
 
@@ -74,39 +78,18 @@ const RestaurantDetails = () => {
         <div className="d-flex justify-content-between align-items-start">
           <div>
             <h2>{restaurant.name}</h2>
-            <p className="text-muted mb-1">
-              {restaurant.cuisine_type} · {restaurant.pricing_tier}
-            </p>
-            <p className="mb-1">
-              📍 {restaurant.address}, {restaurant.city}, {restaurant.state}
-            </p>
-            {restaurant.hours && (
-              <p className="mb-1">
-                <strong>Hours:</strong> {restaurant.hours}
-              </p>
-            )}
-            {restaurant.contact && (
-              <p className="mb-1">
-                <strong>Contact:</strong> {restaurant.contact}
-              </p>
-            )}
-            {restaurant.amenities && (
-              <p className="mb-1">
-                <strong>Amenities:</strong> {restaurant.amenities}
-              </p>
-            )}
+            <p className="text-muted mb-1">{restaurant.cuisine_type} · {restaurant.pricing_tier}</p>
+            <p className="mb-1">📍 {restaurant.address}, {restaurant.city}, {restaurant.state}</p>
+            {restaurant.hours   && <p className="mb-1"><strong>Hours:</strong> {restaurant.hours}</p>}
+            {restaurant.contact && <p className="mb-1"><strong>Contact:</strong> {restaurant.contact}</p>}
+            {restaurant.amenities && <p className="mb-1"><strong>Amenities:</strong> {restaurant.amenities}</p>}
             <p className="mt-2">{restaurant.description}</p>
           </div>
           <div className="text-end">
-            <div className="fs-4 fw-bold text-warning">
-              {avg_rating} ⭐
-            </div>
+            <div className="fs-4 fw-bold text-warning">{avg_rating} ⭐</div>
             <small className="text-muted">{review_count} reviews</small>
             <br />
-            <button
-              className="btn btn-outline-danger mt-2"
-              onClick={handleFavorite}
-            >
+            <button className="btn btn-outline-danger mt-2" onClick={handleFavorite}>
               ❤️ Save
             </button>
           </div>
@@ -120,35 +103,33 @@ const RestaurantDetails = () => {
           {reviews && reviews.length > 0 ? (
             reviews.map((r, i) => (
               <div key={i} className="card p-3 mb-2 shadow-sm">
-                <div className="d-flex justify-content-between">
-                  <strong>{r.reviewer_name || "Anonymous"}</strong>
-                  <span className="text-warning">
-                    {"⭐".repeat(r.rating)}
-                  </span>
+                <div className="d-flex justify-content-between align-items-start">
+                  <div className="d-flex align-items-center gap-2">
+                    {r.reviewer_photo ? (
+                      <img src={`${API_URL}${r.reviewer_photo}`} alt={r.reviewer_name}
+                        style={{ width: '36px', height: '36px', borderRadius: '50%',
+                          objectFit: 'cover', border: '2px solid #dee2e6' }} />
+                    ) : (
+                      <div style={{ width: '36px', height: '36px', borderRadius: '50%',
+                        backgroundColor: '#dc3545', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', color: 'white', fontWeight: 'bold',
+                        fontSize: '14px', flexShrink: 0 }}>
+                        {(r.reviewer_name || 'A')[0].toUpperCase()}
+                      </div>
+                    )}
+                    <strong>{r.reviewer_name || 'Anonymous'}</strong>
+                  </div>
+                  <span className="text-warning">{'⭐'.repeat(r.rating)}</span>
                 </div>
-                <p className="mb-1 mt-1">{r.comment}</p>
-                <small className="text-muted">
-                  {new Date(r.review_date).toLocaleDateString()}
-                </small>
+                <p className="mb-1 mt-2">{r.comment}</p>
+                <small className="text-muted">{new Date(r.review_date).toLocaleDateString()}</small>
 
-                {/* Review Photos */}
                 {r.photos && r.photos.length > 0 && (
                   <div className="mt-2 d-flex flex-wrap gap-2">
                     {r.photos.map((photo, idx) => (
-                      <img
-                        key={idx}
-                        src={`http://localhost:8000${photo.photo_url}`}
-                        alt="Review photo"
-                        style={{
-                          width: '90px',
-                          height: '90px',
-                          objectFit: 'contain',
-                          borderRadius: '8px',
-                          border: '1px solid #dee2e6',
-                          backgroundColor: '#fff',
-                          padding: '4px'
-                        }}
-                      />
+                      <img key={idx} src={`${API_URL}${photo.photo_url}`} alt="Review photo"
+                        style={{ width: '90px', height: '90px', objectFit: 'cover',
+                          borderRadius: '8px', border: '1px solid #dee2e6' }} />
                     ))}
                   </div>
                 )}
@@ -161,10 +142,14 @@ const RestaurantDetails = () => {
 
         {/* Write Review Form */}
         <div className="col-md-5">
-          <WriteReview
-            restaurantId={parseInt(id)}
-            onReviewAdded={fetchDetails}
-          />
+          {token ? (
+            <WriteReview restaurantId={parseInt(id)} onReviewAdded={fetchDetails} />
+          ) : (
+            <div className="card p-4 mt-3 text-center shadow-sm">
+              <p className="text-muted mb-2">Want to share your experience?</p>
+              <a href="/login" className="btn btn-danger">Login to Write a Review</a>
+            </div>
+          )}
         </div>
       </div>
     </div>

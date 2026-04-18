@@ -108,46 +108,58 @@ def chat(request: ChatRequest, db: Session = Depends(get_db), current_user: User
     # step 1: use LLM to extract filters from message
     filters = extract_filters_with_llm(request.message, llm)
 
-    # step 2: query restaurants with extracted filters
-    restaurants = query_restaurants(
-        db,
-        cuisine=filters.get("cuisine"),
-        price=filters.get("price"),
-        city=filters.get("city"),
-        keyword=filters.get("keyword") or filters.get("ambiance"),
-        dietary=filters.get("dietary")
+    # step 2: only query restaurants if the message has actual restaurant intent.
+    # If all filters are null, check if it's a short/greeting message — if so, skip restaurant lookup.
+    has_filters = any(v for v in filters.values() if v is not None)
+    GREETING_PHRASES = {"hi", "hello", "hey", "hiya", "howdy", "sup", "what's up", "whats up", "yo", "good morning", "good evening", "good afternoon"}
+    is_greeting = request.message.strip().lower() in GREETING_PHRASES or (
+        len(request.message.strip().split()) <= 3 and not has_filters
     )
 
-    # fallback to all if no results
-    if not restaurants:
-        restaurants = query_restaurants(db)
+    restaurants = []
+    if has_filters or not is_greeting:
+        restaurants = query_restaurants(
+            db,
+            cuisine=filters.get("cuisine"),
+            price=filters.get("price"),
+            city=filters.get("city"),
+            keyword=filters.get("keyword") or filters.get("ambiance"),
+            dietary=filters.get("dietary")
+        )
 
-    restaurant_context = "\n".join([
-        f"- {r['name']} ({r['cuisine']}, {r['pricing_tier']}, {r['avg_rating']}★, {r['city']}): {r['description']}"
-        for r in restaurants
-    ])
+    restaurant_context = ""
+    if restaurants:
+        restaurant_context = "\n".join([
+            f"- {r['name']} ({r['cuisine']}, {r['pricing_tier']}, {r['avg_rating']}★, {r['city']}): {r['description']}"
+            for r in restaurants
+        ])
 
-    # step 3: run Tavily search BEFORE LLM for extra context
+    # step 3: run Tavily search BEFORE LLM for extra context (only for non-greetings)
     web_context = ""
-    try:
-        tavily = TavilySearchResults(max_results=2)
-        search_results = tavily.invoke(request.message)
-        web_context = " ".join([r.get("content", "") for r in search_results])[:600]
-    except:
-        web_context = ""
+    if not is_greeting:
+        try:
+            tavily = TavilySearchResults(max_results=2)
+            search_results = tavily.invoke(request.message)
+            web_context = " ".join([r.get("content", "") for r in search_results])[:600]
+        except:
+            web_context = ""
 
-    # step 4: build messages with Tavily context injected into system prompt
-    messages = [
-        SystemMessage(content=f"""You are a helpful restaurant recommendation assistant for a Yelp-like platform.
+    # step 4: build system prompt — only inject restaurant data if we have it
+    if restaurant_context:
+        system_content = f"""You are a helpful restaurant recommendation assistant for a Yelp-like platform.
 User preferences: {prefs}
 Available restaurants in database:
 {restaurant_context}
-Additional web context for this query:
-{web_context}
+{f'Additional web context: {web_context}' if web_context else ''}
 Use the user preferences and web context to personalize recommendations.
 Always respond in a conversational, helpful tone.
-When recommending restaurants, include name, rating, price tier, and a brief reason why it matches.""")
-    ]
+When recommending restaurants, include name, rating, price tier, and a brief reason why it matches."""
+    else:
+        system_content = """You are a helpful restaurant recommendation assistant for a Yelp-like platform.
+Respond in a conversational, friendly tone. If the user greets you, greet them back and ask how you can help them find a restaurant.
+If they ask a restaurant-related question, ask clarifying questions about cuisine, location, budget, or occasion."""
+
+    messages = [SystemMessage(content=system_content)]
 
     for msg in request.conversation_history:
         if msg.role == "user":
@@ -167,11 +179,10 @@ When recommending restaurants, include name, rating, price tier, and a brief rea
     db.add(ChatHistory(user_id=current_user.id, message=reply, role="assistant"))
     db.commit()
 
-    matched = [r for r in restaurants if r["name"].lower() in reply.lower()]
-
+    # always return all queried restaurants (not just name-matched ones)
     return {
         "response": reply,
-        "recommendations": matched,
+        "recommendations": restaurants,
         "web_context": web_context if web_context else None
     }
 

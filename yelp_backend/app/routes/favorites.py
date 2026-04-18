@@ -32,5 +32,25 @@ def remove_favorite(restaurant_id: int, db: Session = Depends(get_db), current_u
 
 @router.get("/")
 def get_favorites(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from sqlalchemy import func
+    from app.models.review import Review
+    
     favs = db.query(Favorite).filter(Favorite.user_id == current_user.id).all()
-    return [f.restaurant for f in favs]
+    result = []
+    for f in favs:
+        r = f.restaurant
+        avg = db.query(func.avg(Review.rating)).filter(Review.restaurant_id == r.id).scalar()
+        count = db.query(func.count(Review.id)).filter(Review.restaurant_id == r.id).scalar()
+        result.append({
+            "id": r.id,
+            "name": r.name,
+            "cuisine_type": r.cuisine_type,
+            "address": r.address,
+            "city": r.city,
+            "state": r.state,
+            "pricing_tier": r.pricing_tier,
+            "description": r.description,
+            "avg_rating": round(float(avg), 1) if avg else 0,
+            "review_count": count or 0
+        })
+    return result

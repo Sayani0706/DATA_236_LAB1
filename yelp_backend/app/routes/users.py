@@ -114,6 +114,25 @@ def update_preferences(data: PreferencesUpdate, db: Session = Depends(get_db), c
 
 @router.get("/me/history")
 def get_history(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from app.models.restaurant import Restaurant
+    
     reviews = db.query(Review).filter(Review.user_id == current_user.id).all()
     restaurants = db.query(Restaurant).filter(Restaurant.owner_id == current_user.id).all()
-    return {"reviews": reviews, "restaurants_added": restaurants}
+
+    reviews_with_restaurant = []
+    for rev in reviews:
+        restaurant = db.query(Restaurant).filter(Restaurant.id == rev.restaurant_id).first()
+        reviews_with_restaurant.append({
+            "id": rev.id,
+            "restaurant_id": rev.restaurant_id,
+            "restaurant_name": restaurant.name if restaurant else "Unknown",
+            "rating": rev.rating,
+            "comment": rev.comment,
+            "review_date": rev.review_date,
+            "updated_at": rev.updated_at
+        })
+
+    return {
+        "reviews": reviews_with_restaurant,
+        "restaurants_added": restaurants
+    }

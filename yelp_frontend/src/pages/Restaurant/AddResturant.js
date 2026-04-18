@@ -18,10 +18,14 @@ const AddRestaurant = () => {
 
   const [photo, setPhoto] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setSuccessMsg('');
+    setErrorMsg('');
 
     try {
       const res = await api.post('/restaurants/', formData);
@@ -30,30 +34,21 @@ const AddRestaurant = () => {
       if (photo) {
         const formDataPhoto = new FormData();
         formDataPhoto.append('file', photo);
-
         await api.post(`/restaurants/${restaurantId}/photos`, formDataPhoto, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
       }
 
-      alert('Restaurant added successfully!');
-
+      setSuccessMsg('Restaurant added successfully!');
+      setTimeout(() => setSuccessMsg(''), 4000);
       setFormData({
-        name: '',
-        cuisine_type: '',
-        address: '',
-        city: '',
-        state: '',
-        zip: '',
-        pricing_tier: '$$',
-        description: '',
-        contact: '',
-        hours: '',
-        amenities: ''
+        name: '', cuisine_type: '', address: '', city: '', state: '',
+        zip: '', pricing_tier: '$$', description: '', contact: '', hours: '', amenities: ''
       });
       setPhoto(null);
     } catch (err) {
-      alert('Error adding restaurant. Ensure state is 2 letters (e.g., CA).');
+      setErrorMsg('Error adding restaurant. Ensure state is 2 letters (e.g., CA).');
+      setTimeout(() => setErrorMsg(''), 4000);
     } finally {
       setLoading(false);
     }
@@ -63,6 +58,9 @@ const AddRestaurant = () => {
     <div className="container mt-4">
       <form onSubmit={handleSubmit} className="card p-4 shadow-sm">
         <h3>Add New Restaurant</h3>
+
+        {successMsg && <div className="alert alert-success py-2 mt-2">{successMsg}</div>}
+        {errorMsg   && <div className="alert alert-danger  py-2 mt-2">{errorMsg}</div>}
 
         <input
           className="form-control mb-2"
@@ -96,7 +94,6 @@ const AddRestaurant = () => {
               onChange={(e) => setFormData({ ...formData, city: e.target.value })}
             />
           </div>
-
           <div className="col-md-4">
             <input
               className="form-control"
@@ -108,7 +105,6 @@ const AddRestaurant = () => {
               }
             />
           </div>
-
           <div className="col-md-4">
             <input
               className="form-control"

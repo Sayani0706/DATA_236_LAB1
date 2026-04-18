@@ -1,15 +1,15 @@
-import api from './api';
+import api from './api.js';
 
 export const getRestaurants = async (params) => {
-  const response = await api.get('/restaurants/', { params }); // [cite: 264]
+  const response = await api.get('/restaurants/', { params });
   return response.data;
 };
 
 export const getRestaurantDetails = async (id) => {
-  const response = await api.get(`/restaurants/${id}`); // [cite: 267]
+  const response = await api.get(`/restaurants/${id}`);
   return response.data;
 };
 
 export const addToFavorites = async (id) => {
-  return await api.post(`/favorites/${id}`); // [cite: 283]
+  return await api.post(`/favorites/${id}`);
 };

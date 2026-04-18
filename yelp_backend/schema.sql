@@ -46,6 +46,7 @@ CREATE TABLE restaurants (
     pricing_tier VARCHAR(10),
     amenities VARCHAR(255),
     is_claimed BOOLEAN DEFAULT FALSE,
+    view_count INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL
 );
@@ -67,7 +68,8 @@ CREATE TABLE reviews (
     review_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_review (user_id, restaurant_id)
 );
 
 CREATE TABLE review_photos (
