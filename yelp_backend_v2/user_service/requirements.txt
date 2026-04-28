@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+python-jose[cryptography]
+bcrypt
+python-multipart
+pillow
+langchain
+langchain-groq
+langchain-community
+tavily-python
+python-dotenv
+pydantic[email]
+cryptography
+pymongo
+motor
+aiokafka
